@@ -1,0 +1,11 @@
+a {
+    text-decoration: none;
+}
+.forbidSelect {
+    -webkit-user-select: none;
+    user-select: none;
+}
+.allowTextSelect {
+    -webkit-user-select: text;
+    user-select: text;
+}
