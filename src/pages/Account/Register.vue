@@ -7,10 +7,10 @@
             <a-input v-model="registerParams.basicInfo.nickname"></a-input>
         </a-form-item>
         <a-form-item label="密码">
-            <a-input v-model="registerParams.pwd"></a-input>
+            <a-input type="password" v-model="registerParams.pwd"></a-input>
         </a-form-item>
         <a-form-item>
-            <a-button :loading="loading" @click="register" type="primary">登录</a-button>
+            <a-button :loading="loading" @click="register" type="primary">注册</a-button>
         </a-form-item>
     </a-form>
 </template>
@@ -61,10 +61,16 @@ function register() {
                 content: res.data.status
             })
         }
+    }).finally(() => {
+      loading.value = false;
     })
 }
 </script>
 
 <style scoped>
-
+.form {
+    display: flex;
+    margin: 20vh auto 0;
+    max-width: 500px;
+}
 </style>

@@ -13,6 +13,10 @@ import Server from '@/pages/settingTabPane/Server.vue'
 import Usage from '@/pages/Documents/Usage.vue'
 import About from '@/pages/Documents/About.vue'
 import User from '@/pages/User.vue'
+import Group from '@/pages/Group/Group.vue'
+import Task from "@/pages/Task/Task.vue";
+import AddTask from "@/pages/AddTask.vue";
+import EditTask from "@/pages/EditTask.vue";
 
 const routes:RouteRecordRaw[]  = [
   {
@@ -43,6 +47,16 @@ const routes:RouteRecordRaw[]  = [
     component: User,
   },
   {
+    name: 'task',
+    path: '/task',
+    component: Task,
+  },
+  {
+    name: 'group',
+    path: '/group',
+    component: Group,
+  },
+  {
     name: 'addTodo',
     path: '/addTodo',
     component: AddTodo,
@@ -51,6 +65,16 @@ const routes:RouteRecordRaw[]  = [
     name: 'editTodo',
     path: '/editTodo',
     component: EditTodo,
+  },
+  {
+    name: 'addTask',
+    path: '/addTask',
+    component: AddTask,
+  },
+  {
+    name: 'editTask',
+    path: '/editTask',
+    component: EditTask,
   },
   {
     name: 'document',

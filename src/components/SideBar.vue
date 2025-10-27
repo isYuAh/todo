@@ -20,6 +20,14 @@
             <template #icon><icon-user /></template>
             用户
         </a-menu-item>
+        <a-menu-item v-show="settingsStore.mode === 'online'" @click="redirect('task')" key="task">
+            <template #icon><icon-check-square /></template>
+            任务
+        </a-menu-item>
+        <a-menu-item v-show="settingsStore.mode === 'online'" @click="redirect('group')" key="group">
+            <template #icon><icon-cloud /></template>
+            团队
+        </a-menu-item>
         <a-menu-item @click="redirect('settings')" key="settings">
             <template #icon><icon-settings /></template>
             设置
@@ -36,9 +44,10 @@
 <script setup lang='ts'>
 import {ref} from 'vue'
 import { useRouter } from "vue-router";
-import { IconApps, IconFile, IconPlus, IconSettings, IconUser } from '@arco-design/web-vue/es/icon'
+import { IconApps, IconFile, IconPlus, IconSettings, IconUser, IconCloud, IconCheckSquare } from '@arco-design/web-vue/es/icon'
+import {useSettingsStore} from "@/store/useSettingsStore.ts";
 // import { useSettingsStore } from '@/store/useSettingsStore';
-// let settingsStore = useSettingsStore();
+let settingsStore = useSettingsStore();
 const router = useRouter();
 // console.log(2, Boolean(localStorage.getItem('sidebar-collapsed')), Boolean(localStorage.getItem('sidebar-collapsed')) || false);
 let sidebar_collapsed = ref(localStorage.getItem('sidebar-collapsed') === 'true')

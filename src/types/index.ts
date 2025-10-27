@@ -12,11 +12,8 @@ export type Todo_Default = {
     tags: string[]
     repeatOption: todo_repeatOption
     resetOption: todo_resetOption
+    notificationOption: todo_notificationOption
     origin: todo_origin
-    notificationMessage?: {
-        reset?: string,
-        repeat?: string
-    }
 }
 
 export interface UpdateEvent {
@@ -29,10 +26,7 @@ export interface UpdateEvent {
     tags?: string[]
     repeatOption?: todo_repeatOption
     resetOption?: todo_resetOption
-    notificationMessage?: {
-        reset?: string,
-        repeat?: string
-    }
+    notificationOption?: todo_notificationOption
 }
 export interface TodoChanges {
     title?: string
@@ -43,24 +37,61 @@ export interface TodoChanges {
     tags?: string[]
     repeatOption?: todo_repeatOption
     resetOption?: todo_resetOption
-    notificationMessage?: {
-        reset?: string,
-        repeat?: string
+    notificationOption?: todo_notificationOption
+}
+
+export type todoEditForm = {
+    id: string,
+    title: string,
+    brief: string,
+    tags: string[],
+    tagInputVal: string,
+    type: string,
+    content: string,
+    repeatType: string,
+    resetType: string,
+    notificationType: string,
+    repeat_Times: {
+        totalTimes: number,
+    },
+    notify_Interval: {
+        initTime: string,
+        interval: {
+            hour: number,
+            minute: number,
+            second: number,
+        },
+    },
+    notificationText: string,
+    WeekSpecificDay: {
+        days: number[]
     }
 }
 
+export type todo_notificationOption = todo_notificationOption_Interval |
+                                    todo_notificationOption_Time |
+                                    todo_notificationOption_None
 
-export type todo_repeatOption = todo_repeatOption_Interval |
-                                todo_repeatOption_someTimes
+export type todo_repeatOption = todo_repeatOption_someTimes
 
 export type todo_resetOption = todo_resetOption_weekSpecificDay |
                                 todo_resetOption_None
 
-export type todo_repeatOption_Interval = {
+export type todo_notificationOption_Interval = {
     type: 'Interval'
     initTime: number
     interval: number //毫秒
     trigger: number //上次触发的时候
+    text: string
+}
+export type todo_notificationOption_Time = {
+    type: 'Time'
+    initTime: number
+    trigger: number //上次触发的时候
+    text: string,
+}
+export type todo_notificationOption_None = {
+    type: 'None'
 }
 export type todo_repeatOption_someTimes = {
     type: 'Times'
@@ -83,8 +114,18 @@ export type todo_origin_self = {
 }
 export type todo_origin_remote = {
     origin: 'remote',
-    source: string
+    source: string,
 }
+
+export type task_submitItem = task_submitItem_text
+type task_submitItem_base = {
+    name: string
+}
+export type task_submitItem_text = {
+    type: 'text',
+    description: string
+} & task_submitItem_base
+export type task_submitItems = task_submitItem[]
 
 export interface todoFilter {
     enable: boolean
@@ -93,6 +134,36 @@ export interface todoFilter {
     tagMode: boolean //false: 与 true: 或
     sortByStatus: boolean
 }
+
+
+export type task = {
+    id: number,
+    title: string,
+    brief: string,
+    content: string,
+    tags: string[],
+    type: string,
+    deadline: Date,
+    origin: number,
+    creator: string,
+    submitItems: task_submitItems,
+}
+
+export type todoGroup = {
+    id: number,
+    name: string,
+    brief: string,
+    owner: string,
+    members: {
+        a: string,
+        r: "owner" | "member"
+    }
+}
+
+export type user_joinedGroupsResponse = {
+    id: number,
+    role: "owner" | "member"
+}[]
 
 export type user_basicInfo = {
     nickname: string
@@ -130,7 +201,8 @@ export type getAllTodoResponse = standardResponse<Todo[]>
 
 export type getTodoPageResponse = standardResponse<{
     todos: Todo[],
-    total: number
+    total: number,
+    newPage?: number
 }>
 
 export type standardResponse<T> = {

@@ -14,7 +14,13 @@
 
 <script setup lang='ts'>
 import { useSettingsStore } from '@/store/useSettingsStore';
+import {watchEffect} from "vue";
 let settingsStore = useSettingsStore();
+
+watchEffect(() => {
+  localStorage.setItem('mode', settingsStore.mode)
+})
+
 </script>
 
 <style scoped>

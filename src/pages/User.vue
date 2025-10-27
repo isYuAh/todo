@@ -64,8 +64,11 @@ let userStore = useUserStore();
 // // END 验证登陆状态
 
 import { useTodoStore } from "@/store/useTodoStore";
+import {inject} from "vue";
+import {refreshTodosInjectionKey} from "@/types";
 let todoStore = useTodoStore()
-
+let refreshTodos = inject(refreshTodosInjectionKey)!;
+refreshTodos();
 function uploadAvatar(_: any, current: FileItem) {
     console.log(current);
 }

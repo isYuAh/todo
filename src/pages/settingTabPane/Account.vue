@@ -3,14 +3,14 @@
 <settingPanePart title="账户操作">
     <template #content>
         <a-space>
-            <a-button><RouterLink :to="{name: 'account-login'}">登录</RouterLink></a-button>
+            <a-button v-if="!userStore.token"><RouterLink :to="{name: 'account-login'}">登录</RouterLink></a-button>
             <a-button><RouterLink :to="{name: 'account-register'}">注册</RouterLink></a-button>
-            <a-button v-if="userStore.token && settingsStore.mode === 'online'" @click="logout">登出</a-button>
-            <a-button v-if="userStore.token && settingsStore.mode === 'online'" >切换账户</a-button>
+            <a-button v-if="userStore.token" @click="logout">登出</a-button>
+            <a-button v-if="userStore.token" >切换账户</a-button>
         </a-space>
     </template>
 </settingPanePart>
-<settingPanePart v-if="userStore.token !== ''" defaultEmptyMessage="未登录" title="基本信息">
+<settingPanePart v-if="userStore.token !== undefined && userStore.token !== ''" defaultEmptyMessage="未登录" title="基本信息">
     <template #content>
         <a-descriptions class="allowTextSelect" :column="1" :data="accountDetail"></a-descriptions>
     </template>

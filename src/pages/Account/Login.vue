@@ -4,7 +4,7 @@
             <a-input v-model="loginParmas.account"></a-input>
         </a-form-item>
         <a-form-item label="密码">
-            <a-input v-model="loginParmas.pwd"></a-input>
+            <a-input type="password" v-model="loginParmas.pwd"></a-input>
         </a-form-item>
         <a-form-item>
             <a-button :loading="loading" @click="login" type="primary">登录</a-button>
@@ -19,6 +19,7 @@ import {Notification} from '@arco-design/web-vue'
 import '@arco-design/web-vue/lib/notification/style/index.css'
 import { useUserStore } from '@/store/useUserStore';
 import { AxiosInstance, AxiosResponse } from 'axios'
+//@ts-ignore
 import sha1 from 'sha1'
 import { useRouter } from 'vue-router';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -39,20 +40,33 @@ function login() {
     loading.value = true;
     serverAxios.post('/api/user/login', {
         account: loginParmas.account,
-        pwd: sha1(salt + loginParmas.pwd)
+        pwd: sha1(salt + loginParmas.pwd),
     }).then((res: AxiosResponse<loginResponse>) => {
         if (res.data.code === 200) {
+            console.log(res.data);
             Notification.success({
-                title: `登陆成功, ${res.data.data.basicInfo.nickname}`,
-                content: '接下来获取用户信息'
+                title: `登录成功, ${(res.data as any).data.basicInfo.nickname}`,
+                content: ''
             })
-            userStore.account = res.data.data.account;
-            userStore.token = res.data.data.token;
-            userStore.basicInfo = res.data.data.basicInfo;
+            userStore.account = loginParmas.account;
+            userStore.token = (res.data as any).data.token;
+            userStore.basicInfo = (res.data as any).data.basicInfo;
             settingsStore.mode = 'online';
-            loading.value = false;
             router.back();
+            console.log(userStore)
+        }else {
+            Notification.error({
+                title: '登录失败',
+                content: res.data.status
+            })
         }
+        loading.value = false;
+    }).catch((err: Error) => {
+      Notification.error({
+        title: '登录失败',
+        content: err.message
+      })
+      loading.value = false;
     })
 }
 

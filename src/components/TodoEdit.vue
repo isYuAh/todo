@@ -1,5 +1,5 @@
 <template>
-<!-- <div class="container">
+<div class="container">
     <a-steps changeable :current="currentStep" @change="(cur:number) => {currentStep = cur}">
         <a-step>基本信息</a-step>
         <a-step>内容编辑</a-step>
@@ -104,141 +104,48 @@
                     </a-form-item>
                 </div>
             </div>
-            
+            <slot></slot>
         </a-form>
     </div>
-</div> -->
-<TodoEdit :loading="false" v-model="form">
-    <a-form-item>
-        <a-button @click="addTodoTrigger">添加</a-button>
-    </a-form-item>
-</TodoEdit>
+</div>
 </template>
 
 <script setup lang='ts'>
-import TodoEdit from '@/components/TodoEdit.vue'; 
-import { useSettingsStore } from '@/store/useSettingsStore';
-let settingsStore = useSettingsStore();
-// 验证登录
-import { useUserStore } from "@/store/useUserStore"
-import { vaildLogin } from '@/plugins/utils_user';
-
-
-if (settingsStore.mode === 'online') {
-  let userStore = useUserStore();
-  vaildLogin({account: userStore.account});
-}
-// END 验证登陆状态
-import { SnowflakeIdv1 } from 'simple-flakeid'
-const snowflake = new SnowflakeIdv1({workerId: 1, baseTime: new Date('2024-01-01').getTime()});
-import {inject, reactive, toRaw} from 'vue'
-import {Notification} from '@arco-design/web-vue'
-import '@arco-design/web-vue/lib/notification/style/index.css'
-import {Todo, addTodoInjectionKey, todoEditForm} from '@/types';
-let form = reactive<todoEditForm>({
-    id: '',
-    title: '',
-    brief: '',
-    tags: <string[]>[],
-    tagInputVal: '',
-    type: 'markdown',
-    content: '',
-    repeatType: 'Times',
-    resetType: 'None',
-    notificationType: 'None',
-    repeat_Times: {
-        totalTimes: 1,
-    },
-    notify_Interval: {
-        initTime: '',
-        interval: {
-            hour: 0,
-            minute: 0,
-            second: 0,
-        },
-    },
-    notificationText: '',
-    WeekSpecificDay: {
-        days: <number[]>[]
+import { ref } from 'vue';
+import type {todoEditForm} from '@/types'
+import { MdEditor } from 'md-editor-v3';
+import 'md-editor-v3/lib/style.css';
+let currentStep = ref(1)
+const form = defineModel({
+    required: true,
+    type: todoEditForm
+});
+console.log(form);
+function tagInputBlur() {
+    if (form.value.tagInputVal) {
+        form.value.tags.push(form.value.tagInputVal);
+        form.value.tagInputVal='';
     }
-    
-})
-let addTodo = inject(addTodoInjectionKey)!;
-function addTodoTrigger() {
-    const id = 'L' + snowflake.NextId().toString();
-    let todo:Todo = {
-        id,
-        title: form.title,
-        brief: form.brief,
-        content: form.content,
-        status: 'default',
-        type: form.type,
-        tags: toRaw(form.tags),
-        repeatOption: {
-            totalTimes:1,
-            restTimes:1,
-            type: 'Times'
-        },
-        resetOption: {
-            type: 'None',
-        },
-        notificationOption: {
-            type: 'None'
-        },
-        origin: {
-            origin: 'self'
-        }
-    }
-    if (form.repeatType === 'Times') {
-        todo.repeatOption = {
-            type: 'Times',
-            totalTimes: form.repeat_Times.totalTimes,
-            restTimes: form.repeat_Times.totalTimes,
-        }
-    }
-    if (form.notificationType === 'Interval') {
-        let initTime = new Date(form.notify_Interval.initTime).getTime();
-        let trigger = initTime
-        let interval = form.notify_Interval.interval.hour * 1000*3600 +
-                        form.notify_Interval.interval.minute * 1000*60 +
-                        form.notify_Interval.interval.second * 1000;
-        while (trigger < Date.now()) {
-            trigger += interval
-        }
-        todo.notificationOption = {
-            type: 'Interval',
-            initTime: initTime,
-            trigger: trigger,
-            interval: interval,
-            text: form.notificationText
-        }
-    }
-    if (form.resetType === 'WeekSpecificDay') {
-        todo.resetOption = {
-            type: 'WeekSpecificDay',
-            days: toRaw(form.WeekSpecificDay.days),
-            lastTrigger: Date.now(),
-        }
-    }
-    // console.log(todo);
-    addTodo(todo).then((res) => {
-        Notification.success({
-            title: '成功',
-            content: `添加${res.data}成功`,
-        })
-    }).catch((err: Error) => {
-        let content = err.message;
-        if (err.name === 'ConstraintError') {
-            content = '已有重复的id'
-        }
-        Notification.error({
-            title: '失败',
-            content: content,
-        })
-        console.log(err);
-    }) 
 }
 </script>
 
 <style scoped>
+.container {
+    padding: 20px;
+}
+.formContainer {
+    display: block;
+    /* margin: 0 auto; */
+    max-width: 600px;
+}
+
+#totalTimes .arco-input-prepend {
+    padding: 0;
+}
+.DayCheckbox {
+    text-wrap: nowrap;
+}
+/* .input {
+    width: 400px;
+} */
 </style>

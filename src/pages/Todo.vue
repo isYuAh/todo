@@ -30,11 +30,15 @@
               <QueryPanel />
             </a-collapse-item>
             <a-collapse-item :key="2" header="操作栏">
-              <a-button type="primary" @click="router.push({name: 'addTodo'})">添加待办</a-button>
+              <a-space>
+                <a-button type="primary" @click="router.push({name: 'addTodo'})">添加待办</a-button>
+                <a-button v-show="false" type="primary" disabled status="danger" @click="testFunc1">测试1</a-button>
+                <a-button v-show="false" type="primary" status="danger" @click="testFunc2">测试2 - 获取信息</a-button>
+              </a-space>
             </a-collapse-item>
           </a-collapse>
 
-          <TodoList :items="filteredTodos" />
+          <TodoList :items="todoStore.todos" />
         </a-space>
       </a-spin>
     </simplebar>
@@ -64,10 +68,19 @@ import { emitter } from '@/emitter';
 import { refreshLoop } from "@/support/todoLoop";
 import QueryPanel from '@/components/QueryPanel.vue';
 import { useTodoStore } from "@/store/useTodoStore";
-import { Todo, UpdateEvent, updateTodoInjectionKey, deleteTodoInjectionKey, refreshTodosInjectionKey, todoFilter, filterTodosInjectionKey } from "@/types";
+import {
+  Todo,
+  UpdateEvent,
+  updateTodoInjectionKey,
+  deleteTodoInjectionKey,
+  refreshTodosInjectionKey,
+  todoFilter,
+  addTodoInjectionKey
+} from "@/types";
 import {useRouter} from 'vue-router'
 
-import { computed, inject, onUnmounted, ref, toRaw, watchEffect } from "vue";
+import { inject, onUnmounted, ref, toRaw, watchEffect } from "vue";
+import {AxiosInstance} from "axios";
 
 let router = useRouter();
 let todoStore = useTodoStore();
@@ -84,6 +97,9 @@ let focusTodo = ref<Todo>({
     totalTimes: 1,
     restTimes: 1,
   },
+  notificationOption: {
+    type: 'None'
+  },
   resetOption: {
     type: 'None',
   },
@@ -91,23 +107,25 @@ let focusTodo = ref<Todo>({
     origin: 'self'
   }
 })
-let filterTodos = inject(filterTodosInjectionKey)!;
+// let filterTodos = inject(filterTodosInjectionKey)!;
 let loading = ref(false);
-let query = ref<todoFilter>({
-  enable: false,
-  title: '',
-  tags: [],
-  tagMode: false,
-  sortByStatus: false,
-})
+// let query = ref<todoFilter>({
+//   enable: false,
+//   title: '',
+//   tags: [],
+//   tagMode: false,
+//   sortByStatus: false,
+// })
 let detailVisible = ref(false);
 emitter.on('updateQueryClause', (queryClause: todoFilter) => {
-  Object.assign(query.value, queryClause)
+  // Object.assign(query.value, queryClause)
+  todoStore.query = queryClause;
+  refreshTodos();
 });
 // function updateQueryClause(queryClause: todoQueryClause) {
 //   Object.assign(query, queryClause)
 // }
-let filteredTodos = computed(() => filterTodos(todoStore.todos, query.value))
+// let filteredTodos = computed(() => filterTodos(todoStore.todos, query.value))
 // let getAllTodo = inject(getAllTodoInjectionKey)!;
 // let getTodoPage = inject(getTodoPageInjectionKey)!;
 let refreshTodos = inject(refreshTodosInjectionKey)!;
@@ -149,7 +167,6 @@ function completeTodoOnce(todo: Todo) {
   }
 }
 emitter.on('refreshTodos', function () {
-  // console.log(3);
   loading.value = true;
   refreshTodos().finally(() => loading.value = false)
 })
@@ -289,6 +306,42 @@ emitter.emit('refreshTodos')
 //     emitter.emit('refreshTodos')
 //   }
 // }
+
+//TODO::TESTFUNC
+let addTodo = inject(addTodoInjectionKey)!;
+function testFunc1() {
+  let todo:Todo = {
+    id: 'T1002',
+    title: '远程Todo测试2',
+    brief: '不带item',
+    content: '简单介绍',
+    status: 'default',
+    type: 'text',
+    tags: ['1','2', '4'],
+    repeatOption: {
+      totalTimes:1,
+      restTimes:1,
+      type: 'Times'
+    },
+    resetOption: {
+      type: 'None',
+    },
+    notificationOption: {
+      type: 'None'
+    },
+    origin: {
+      origin: 'remote',
+      source: 'testUser',
+    }
+  }
+  addTodo(todo)
+}
+let serverAxios = inject('serverAxios') as AxiosInstance;
+function testFunc2() {
+  serverAxios.post('/api/user/joinedGroups', {}, {headers: {token: useUserStore().token}})
+}
+
+//END TESTFUNC
 
 </script>
 

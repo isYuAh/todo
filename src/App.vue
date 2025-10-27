@@ -3,9 +3,16 @@
   <div class="header">
     <a-typography-title :heading="3" class="title">Mew todo</a-typography-title>
     <div v-if="settingsStore.mode === 'online'" class="right">
-      <a-avatar :image-url="userStore.basicInfo.avatar" class="forbidSelect" :size="32">
-        <span v-if="!userStore.basicInfo.avatar">{{ userStore.basicInfo.nickname.substring(0, 3) }}</span>
-      </a-avatar>
+      <a-dropdown trigger="hover">
+        <a-avatar style="cursor: pointer" :image-url="userStore.basicInfo.avatar" class="forbidSelect" :size="32">
+          <span v-if="!userStore.basicInfo.avatar">{{ userStore.basicInfo.nickname.substring(0, 3) }}</span>
+        </a-avatar>
+        <template #content>
+          <a-doption @click="changeNickname">修改昵称</a-doption>
+          <a-doption @click="logout">退出登录</a-doption>
+        </template>
+      </a-dropdown>
+
     </div>
   </div>
   <div class="main">
@@ -22,9 +29,9 @@
 <script setup lang="ts">
 import { RouterView } from "vue-router";
 import SideBar from "@/components/SideBar.vue";
-import { provide, watch, watchEffect } from "vue";
+import { provide, watch, watchEffect, toRaw } from "vue";
 
-import { Notification } from "@arco-design/web-vue";
+import {Message, Notification} from "@arco-design/web-vue";
 import '@arco-design/web-vue/lib/notification/style/index.css'
 
 // import simplebar from 'simplebar-vue';
@@ -34,7 +41,28 @@ let settingsStore = useSettingsStore();
 import { useUserStore } from "./store/useUserStore";
 let userStore = useUserStore()
 import { db } from "./db";
-import { Todo, TodoChanges, UpdateEvent, addTodoInjectionKey, deleteTodoInjectionKey, deleteTodoResponse, filterTodosInjectionKey, getAllTodoInjectionKey, getTodoInjectionKey, getTodoPageInjectionKey, getTodoPageResponse, getTodoResponse, refreshTodosInjectionKey, simpleResponse, standardResponse, todoFilter, updateTodoInjectionKey, updateTodoResponse, userLogoutInjectionKey } from "./types";
+import {
+  Todo,
+  TodoChanges,
+  UpdateEvent,
+  addTodoInjectionKey,
+  deleteTodoInjectionKey,
+  deleteTodoResponse,
+  filterTodosInjectionKey,
+  getAllTodoInjectionKey,
+  getTodoInjectionKey,
+  getTodoPageInjectionKey,
+  getTodoPageResponse,
+  getTodoResponse,
+  refreshTodosInjectionKey,
+  simpleResponse,
+  standardResponse,
+  todoFilter,
+  updateTodoInjectionKey,
+  updateTodoResponse,
+  userLogoutInjectionKey,
+  getAllTodoResponse
+} from "./types";
 import axios, { AxiosResponse } from "axios";
 import { useTodoStore } from "./store/useTodoStore";
 let todoStore = useTodoStore();
@@ -43,7 +71,7 @@ let todoStore = useTodoStore();
 let serverAxios = axios.create({
     baseURL: settingsStore.server.url,
     headers: {
-      apifoxToken: 'XUhpFgVLLk8CLYrh_Mpx3',
+      apifoxToken: 'XUhpFgVLLk8CLYrh_Mpx3', //TODO:: Delete
     },
     data: {
       token: '',
@@ -51,13 +79,29 @@ let serverAxios = axios.create({
     timeout: 10000,
 })
 
-serverAxios.interceptors.request.use(config => config, (err: Error) => {
+serverAxios.interceptors.request.use(config => {
+  if (config.method === 'post') {
+    if (!('data' in config)) {
+      config.data = {}
+    }
+    if (!config.data.token && userStore.token) {
+      config.data.token = userStore.token;
+    }
+  }
+  if (!config.headers.token) {
+    config.headers.set('token', userStore.token)
+  }
+  return config;
+}, (err: Error) => {
   Notification.error({
       title: '错误',
       content: err.message,
   })
 })
 provide('serverAxios', serverAxios)
+userStore.$subscribe((_: any, state: any) => {
+  localStorage.setItem("userStore", JSON.stringify(toRaw(state)));
+})
 watchEffect(() => { //实时更新服务器地址
   serverAxios.defaults.baseURL = settingsStore.server.url
 })
@@ -120,43 +164,15 @@ function getAllTodo() {
       })
     })
   }else {
-    return new Promise<standardResponse<Todo[]>>((resolve, reject) => {
-      let np = 1; // 当前页
-      let tp = -1; //总页数
-      let result = <Todo[]>[];
-      serverAxios.post('/api/todos/get/user', {
-        page: np,
-        pageNum: todoStore.config.pageNum,
-        filter: todoStore.query
-      }).then((res: AxiosResponse<getTodoPageResponse>) => {
-        tp = Math.ceil(res.data.data!.total / todoStore.config.pageNum);
-        result.push(...res.data.data!.todos);
-        getNextPage();
+    return new Promise<getAllTodoResponse>((resolve, reject) => {
+      serverAxios.post('/api/todos/get/user/all', {
+        filter: todoStore.query,
+        token: userStore.token
+      }).then((res: AxiosResponse) => {
+        resolve(res.data)
       }).catch((err: Error) => {
         reject(err)
       })
-      function getNextPage() {
-        np++;
-        if (np > tp) {
-          resolve({
-            code: 200,
-            status: 'success',
-            data: result
-          });
-        }else {
-          serverAxios.post('/api/todos/get/user', {
-            page: np,
-            pageNum: todoStore.config.pageNum,
-            filter: todoStore.query
-          }).then((res: AxiosResponse<getTodoPageResponse>) => {
-            result.push(...res.data.data!.todos);
-            getNextPage();
-          }).catch((err: Error) => {
-            reject(err)
-          })
-        }
-      }
-      
     })
   }
 }
@@ -164,15 +180,23 @@ function getTodoPage(pn: number = todoStore.config.page) {
   if (settingsStore.mode === 'offline') {
     return new Promise<getTodoPageResponse>((resolve, reject) => {
       db.todos.toArray().then((res: Todo[] | undefined) => {
-        res = res || [];
-        resolve({
+        let response = {
           code: 200,
           status: 'success',
-          data: {
-            todos: filterTodos(res, todoStore.query).slice((todoStore.config.page - 1) * todoStore.config.pageNum, todoStore.config.page * todoStore.config.pageNum),
-            total: res.length
-          }
-        })
+          data: {}
+        }
+        res = res || [];
+        let result = filterTodos(res, todoStore.query)
+        if (pn > Math.ceil(result.length / todoStore.config.pageNum)) {
+          pn = 1;
+          (response.data as any).newPage = pn;
+        }
+        let resultPage = result.slice((pn - 1) * todoStore.config.pageNum, pn * todoStore.config.pageNum)
+        response.data = {
+          todos: resultPage,
+          total: result.length
+        }
+        resolve(<any>response)
       }).catch((err: Error) => {
         reject(err)
       })
@@ -182,7 +206,8 @@ function getTodoPage(pn: number = todoStore.config.page) {
       serverAxios.post('/api/todos/get/user', {
         page: pn,
         pageNum: todoStore.config.pageNum,
-        filter: todoStore.query
+        filter: todoStore.query,
+        token: userStore.token
       }).then((res: AxiosResponse) => {
         resolve(res.data)
       }).catch((err: Error) => {
@@ -195,8 +220,11 @@ function refreshTodos() {
   return new Promise<void>((resolve, reject) => {
     getTodoPage().then((res: getTodoPageResponse) => {
       if (res.code === 200) { //200一定有返回
-        todoStore.todos = filterTodos(res.data?.todos || [], todoStore.query)
+        todoStore.todos = res.data?.todos || []
         todoStore.config.total = res.data!.total;
+        if ('data' in res && 'newPage' in res.data!) {
+          todoStore.config.page = res.data.newPage!
+        }
         resolve()
       }else {
         reject(new Error(res.status))
@@ -229,7 +257,10 @@ function getTodo(id: string) {
     })
   }else {
     return new Promise<standardResponse<Todo>>((resolve, reject) => {
-      serverAxios.post('/api/todo/get/user').then((res: AxiosResponse) => {
+      serverAxios.post('/api/todo/get/user', {
+        token: userStore.token,
+        id
+      }).then((res: AxiosResponse) => {
         resolve(res.data)
       }).catch((err: Error) => {
         reject(err)
@@ -259,7 +290,8 @@ function updateTodo(UpdateEvent: UpdateEvent) {
     return new Promise<standardResponse<number>>((resolve, reject) => {
       serverAxios.post('/api/todo/update/user', {
         id: UpdateEvent.id,
-        changes: Update
+        updater: Update,
+        token: userStore.token
       }).then((res: AxiosResponse<updateTodoResponse>) => {
         resolve(res.data)
       }).catch((err: Error) => {
@@ -268,45 +300,6 @@ function updateTodo(UpdateEvent: UpdateEvent) {
     })
   }
 }
-// function updateTodoStatus(UpdateEvent: UpdateEvent) {
-//   // console.log(6);
-//   return new Promise<standardResponse<number>>((resolve, reject) => {
-//     let newUpdate: UpdateEvent = {id: ''};
-//     Object.assign(newUpdate, UpdateEvent);
-//     if (UpdateEvent.status === 'default' || UpdateEvent.status === 'success') {
-//       // console.log(8);
-//       getTodo(UpdateEvent.id).then((res: standardResponse<Todo | undefined>) => {
-//         // console.log(9);
-//         let todo = res.data
-//         if (todo !== undefined) {
-//           newUpdate.repeatOption = todo.repeatOption;
-//           if (newUpdate.repeatOption.type === 'Times') {
-//             newUpdate.repeatOption.restTimes = newUpdate.repeatOption.totalTimes;
-//           }
-//           // console.log(newUpdate);
-//           updateTodo(newUpdate).then(result => {
-//             resolve(result)
-//           }).catch(err => {
-//             reject(err)
-//           })
-//         }else {
-//           // console.log(10);
-//           reject(new Error('todo is undefined'))
-//         }
-//       }).catch((err: Error) => {
-//         console.log(11, UpdateEvent);
-//         reject(err)
-//       })
-//     }else {
-//       // console.log(7);
-//       updateTodo(newUpdate).then(result => {
-//         resolve(result)
-//       }).catch(err => {
-//         reject(err)
-//       })
-//     }
-//   })
-// }
 provide(refreshTodosInjectionKey, refreshTodos)
 provide(getTodoInjectionKey, getTodo)
 provide(deleteTodoInjectionKey, (id: string) => {
@@ -323,7 +316,7 @@ provide(deleteTodoInjectionKey, (id: string) => {
     })
   }else {
     return new Promise<simpleResponse>((resolve, reject) => {
-      serverAxios.post('/api/todo/delete/user', {id}).then((res: AxiosResponse<deleteTodoResponse>) => {
+      serverAxios.post('/api/todo/delete/user', {id, token: userStore.token}).then((res: AxiosResponse<deleteTodoResponse>) => {
         resolve(res.data)
       }).catch((err: Error) => {
         reject(err)
@@ -336,11 +329,11 @@ provide(getTodoPageInjectionKey, getTodoPage)
 provide(addTodoInjectionKey, (todo: Todo) => {
   if (settingsStore.mode === 'offline') {
     return new Promise<standardResponse<string>>((resolve, reject) => {
-      db.todos.add(todo).then((res: string) => {
+      db.todos.add(todo).then(() => {
         resolve({
           code: 200,
           status: 'success',
-          data: res
+          data: todo.id
         })
       }).catch((err: Error) => {
         reject(err)
@@ -348,7 +341,7 @@ provide(addTodoInjectionKey, (todo: Todo) => {
     })
   }else {
     return new Promise<standardResponse<string>>((resolve, reject) => {
-      serverAxios.post('/api/todo/add/user').then((res: AxiosResponse) => {
+      serverAxios.post('/api/todo/add/user', {token: userStore.token, todo: todo}).then((res: AxiosResponse) => {
         resolve(res.data)
       }).catch((err: Error) => {
         reject(err)
@@ -358,40 +351,19 @@ provide(addTodoInjectionKey, (todo: Todo) => {
 })
 provide(updateTodoInjectionKey, updateTodo)
 provide(filterTodosInjectionKey, filterTodos)
-// provide(updateTodoStatusInjectionKey, updateTodoStatus)
-// provide(completeTodoOnceInjectionKey, (todo: Todo) => {
-//   return new Promise<standardResponse<number>>((resolve, reject) => {
-//     if (todo.repeatOption.type === 'Times' &&
-//         todo.status === 'processing') 
-//     {
-//       if (todo.repeatOption.restTimes > 0) {
-//         todo.repeatOption.restTimes--;
-//       }
-//       if (todo.repeatOption.restTimes <= 0) {
-//         updateTodoStatus({id: todo.id, status: 'success'}).then(val => {
-//           resolve(val)
-//         }).catch(err => {
-//           reject(err)
-//         })
-//       }else {
-//         updateTodo({id: todo.id, repeatOption: toRaw(todo.repeatOption)}).then(val => {
-//           resolve(val)
-//         }).catch(err => {
-//           reject(err)
-//         })
-//       }
-//     } else {
-//       updateTodoStatus({id: todo.id, status: 'success'}).then(val => {
-//         resolve(val)
-//       }).catch(err => {
-//         reject(err)
-//       })
-//     }
-//   })
-// })
+function logout() {
+  userLogout().then((res: simpleResponse) => {
+    if (res.code === 200) {
+      Notification.success('登出成功')
+      settingsStore.mode = 'offline'
+    }
+  })
+}
 function userLogout() {
   return new Promise<simpleResponse>((resolve, reject) => {
-    serverAxios.post('/api/user/logout').then((res: AxiosResponse) => {
+    serverAxios.post('/api/user/logout', {
+      token: userStore.token
+    }).then((res: AxiosResponse) => {
       if (res.data.code === 200) {
         userStore.token = '';
         userStore.account = '';
@@ -408,6 +380,19 @@ function userLogout() {
       reject(err)
     })
   })
+}
+function changeNickname() {
+  let newnn = prompt('输入新昵称')
+  if (newnn) {
+    serverAxios.post('/api/user/edit/basicInfo/nickname', {
+      value: newnn
+    }).then((res: any) => {
+      if (res.data.code === 200) {
+        Message.success('修改成功！')
+        userStore.basicInfo.nickname = newnn;
+      }
+    })
+  }
 }
 provide(userLogoutInjectionKey, userLogout)
 

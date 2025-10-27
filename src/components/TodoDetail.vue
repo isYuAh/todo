@@ -13,9 +13,6 @@
 
         </a-descriptions>
     </a-tab-pane>
-    <a-tab-pane key="3" title="提交" disabled>
-
-    </a-tab-pane>
 </a-tabs>
 </template>
 
@@ -100,4 +97,9 @@ watch(() => props.focusTodo, ()=> {
 </script>
 
 <style scoped>
+.submitPageContainer {
+  padding: 20px;
+  width: 100%;
+  height: 100%;
+}
 </style>
